@@ -25,6 +25,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"knative.dev/eventing/pkg/apis/config"
+	"knative.dev/eventing/pkg/apis/eventing"
 	v1 "knative.dev/eventing/pkg/apis/eventing/v1"
 	fakeeventingclient "knative.dev/eventing/pkg/client/injection/client/fake"
 	"knative.dev/eventing/pkg/reconciler/sugar/resources"
@@ -39,7 +41,14 @@ import (
 )
 
 const (
-	testNS = "test-namespace"
+	testNS              = "test-namespace"
+	brokerDefaultConfig = `
+	clusterDefault:
+	  apiVersion: v1
+	  brokerClass: MTChannelBasedBroker
+	  kind: ConfigMap
+	  name: config-br-default-channel
+	  namespace: knative-eventing`
 )
 
 func TestEnabledByDefault(t *testing.T) {
@@ -48,6 +57,16 @@ func TestEnabledByDefault(t *testing.T) {
 
 	// Objects
 	broker := resources.MakeBroker(testNS, resources.DefaultBrokerName)
+	broker.Annotations = map[string]string{eventing.BrokerClassKey: eventing.MTChannelBrokerClassValue}
+
+	configuredCtx, _ := SetupFakeContext(t)
+	configuredCtx = config.ToContext(configuredCtx, &config.Config{
+		Defaults: &config.Defaults{
+			ClusterDefault: &config.ClassAndBrokerConfig{
+				BrokerClass: eventing.MTChannelBrokerClassValue,
+			},
+		},
+	})
 
 	table := TableTest{{
 		Name: "bad workqueue key",
@@ -62,6 +81,7 @@ func TestEnabledByDefault(t *testing.T) {
 		Objects: []runtime.Object{
 			NewNamespace(testNS),
 		},
+		Ctx:                     configuredCtx,
 		Key:                     testNS,
 		SkipNamespaceValidation: true,
 		WantErr:                 false,
@@ -77,6 +97,7 @@ func TestEnabledByDefault(t *testing.T) {
 			NewNamespace(testNS,
 				WithNamespaceLabeled(sugar.InjectionDisabledLabels())),
 		},
+		Ctx: configuredCtx,
 		Key: testNS,
 	}, {
 		Name: "Namespace is deleted no resources",
@@ -86,14 +107,17 @@ func TestEnabledByDefault(t *testing.T) {
 				WithNamespaceDeleted,
 			),
 		},
+		Ctx: configuredCtx,
 		Key: testNS,
 	}, {
 		Name: "Namespace enabled",
 		Objects: []runtime.Object{
+			NewConfigMap(config.DefaultsConfigName, testNS, WithConfigMapData(map[string]string{config.BrokerDefaultsKey: brokerDefaultConfig})),
 			NewNamespace(testNS,
 				WithNamespaceLabeled(sugar.InjectionEnabledLabels()),
 			),
 		},
+		Ctx:                     configuredCtx,
 		Key:                     testNS,
 		SkipNamespaceValidation: true,
 		WantErr:                 false,
@@ -111,6 +135,7 @@ func TestEnabledByDefault(t *testing.T) {
 			),
 			resources.MakeBroker(testNS, resources.DefaultBrokerName),
 		},
+		Ctx:                     configuredCtx,
 		Key:                     testNS,
 		SkipNamespaceValidation: true,
 		WantErr:                 false,
@@ -127,6 +152,7 @@ func TestEnabledByDefault(t *testing.T) {
 				},
 			},
 		},
+		Ctx:                     configuredCtx,
 		Key:                     testNS,
 		SkipNamespaceValidation: true,
 		WantErr:                 false,
@@ -151,6 +177,16 @@ func TestDisabledByDefault(t *testing.T) {
 	brokerEvent := Eventf(corev1.EventTypeNormal, "BrokerCreated", "Default eventing.knative.dev Broker created.")
 
 	broker := resources.MakeBroker(testNS, resources.DefaultBrokerName)
+	broker.Annotations = map[string]string{eventing.BrokerClassKey: eventing.MTChannelBrokerClassValue}
+
+	configuredCtx, _ := SetupFakeContext(t)
+	configuredCtx = config.ToContext(configuredCtx, &config.Config{
+		Defaults: &config.Defaults{
+			ClusterDefault: &config.ClassAndBrokerConfig{
+				BrokerClass: eventing.MTChannelBrokerClassValue,
+			},
+		},
+	})
 
 	table := TableTest{{
 		Name: "bad workqueue key",
@@ -165,6 +201,7 @@ func TestDisabledByDefault(t *testing.T) {
 		Objects: []runtime.Object{
 			NewNamespace(testNS),
 		},
+		Ctx:                     configuredCtx,
 		Key:                     testNS,
 		SkipNamespaceValidation: true,
 		WantErr:                 false,
@@ -175,6 +212,7 @@ func TestDisabledByDefault(t *testing.T) {
 			NewNamespace(testNS,
 				WithNamespaceLabeled(sugar.InjectionDisabledLabels())),
 		},
+		Ctx: configuredCtx,
 		Key: testNS,
 	}, {
 		Name: "Namespace is deleted no resources",
@@ -184,6 +222,7 @@ func TestDisabledByDefault(t *testing.T) {
 				WithNamespaceDeleted,
 			),
 		},
+		Ctx: configuredCtx,
 		Key: testNS,
 	}, {
 		Name: "Namespace enabled",
@@ -192,6 +231,7 @@ func TestDisabledByDefault(t *testing.T) {
 				WithNamespaceLabeled(sugar.InjectionEnabledLabels()),
 			),
 		},
+		Ctx:                     configuredCtx,
 		Key:                     testNS,
 		SkipNamespaceValidation: true,
 		WantErr:                 false,
@@ -209,6 +249,7 @@ func TestDisabledByDefault(t *testing.T) {
 			),
 			resources.MakeBroker(testNS, resources.DefaultBrokerName),
 		},
+		Ctx:                     configuredCtx,
 		Key:                     testNS,
 		SkipNamespaceValidation: true,
 		WantErr:                 false,
@@ -225,6 +266,7 @@ func TestDisabledByDefault(t *testing.T) {
 				},
 			},
 		},
+		Ctx:                     configuredCtx,
 		Key:                     testNS,
 		SkipNamespaceValidation: true,
 		WantErr:                 false,

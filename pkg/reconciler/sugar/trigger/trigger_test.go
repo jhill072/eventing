@@ -23,6 +23,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"knative.dev/eventing/pkg/apis/config"
+	"knative.dev/eventing/pkg/apis/eventing"
 	v1 "knative.dev/eventing/pkg/apis/eventing/v1"
 	fakeeventingclient "knative.dev/eventing/pkg/client/injection/client/fake"
 	"knative.dev/eventing/pkg/client/injection/reconciler/eventing/v1/trigger"
@@ -48,6 +50,16 @@ func TestEnabledByDefault(t *testing.T) {
 
 	// Objects
 	broker := resources.MakeBroker(testNS, resources.DefaultBrokerName)
+	broker.Annotations = map[string]string{eventing.BrokerClassKey: eventing.MTChannelBrokerClassValue}
+
+	configuredCtx, _ := SetupFakeContext(t)
+	configuredCtx = config.ToContext(configuredCtx, &config.Config{
+		Defaults: &config.Defaults{
+			ClusterDefault: &config.ClassAndBrokerConfig{
+				BrokerClass: eventing.MTChannelBrokerClassValue,
+			},
+		},
+	})
 
 	table := TableTest{{
 		Name: "bad workqueue key",
@@ -62,6 +74,7 @@ func TestEnabledByDefault(t *testing.T) {
 		Objects: []runtime.Object{
 			NewTrigger(triggerName, testNS, brokerName),
 		},
+		Ctx:                     configuredCtx,
 		Key:                     testNS + "/" + triggerName,
 		SkipNamespaceValidation: true,
 		WantErr:                 false,
@@ -77,6 +90,7 @@ func TestEnabledByDefault(t *testing.T) {
 			NewNamespace(testNS,
 				WithNamespaceLabeled(sugar.InjectionDisabledLabels())),
 		},
+		Ctx: configuredCtx,
 		Key: testNS + "/" + triggerName,
 	}, {
 		Name: "Trigger is deleted no resources",
@@ -85,6 +99,7 @@ func TestEnabledByDefault(t *testing.T) {
 				WithAnnotation(sugar.InjectionLabelKey, sugar.InjectionEnabledLabelValue),
 				WithTriggerDeleted),
 		},
+		Ctx: configuredCtx,
 		Key: testNS + "/" + triggerName,
 	}, {
 		Name: "Trigger enabled",
@@ -92,6 +107,7 @@ func TestEnabledByDefault(t *testing.T) {
 			NewTrigger(triggerName, testNS, brokerName,
 				WithAnnotation(sugar.InjectionLabelKey, sugar.InjectionEnabledLabelValue)),
 		},
+		Ctx:                     configuredCtx,
 		Key:                     testNS + "/" + triggerName,
 		SkipNamespaceValidation: true,
 		WantErr:                 false,
@@ -109,6 +125,7 @@ func TestEnabledByDefault(t *testing.T) {
 			),
 			resources.MakeBroker(testNS, resources.DefaultBrokerName),
 		},
+		Ctx:                     configuredCtx,
 		Key:                     testNS + "/" + triggerName,
 		SkipNamespaceValidation: true,
 		WantErr:                 false,
@@ -124,6 +141,7 @@ func TestEnabledByDefault(t *testing.T) {
 				},
 			},
 		},
+		Ctx:                     configuredCtx,
 		Key:                     testNS + "/" + triggerName,
 		SkipNamespaceValidation: true,
 		WantErr:                 false,
@@ -147,6 +165,16 @@ func TestDisabledByDefault(t *testing.T) {
 	brokerEvent := Eventf(corev1.EventTypeNormal, "BrokerCreated", "Default eventing.knative.dev Broker %q created.", "default")
 
 	broker := resources.MakeBroker(testNS, resources.DefaultBrokerName)
+	broker.Annotations = map[string]string{eventing.BrokerClassKey: eventing.MTChannelBrokerClassValue}
+
+	configuredCtx, _ := SetupFakeContext(t)
+	configuredCtx = config.ToContext(configuredCtx, &config.Config{
+		Defaults: &config.Defaults{
+			ClusterDefault: &config.ClassAndBrokerConfig{
+				BrokerClass: eventing.MTChannelBrokerClassValue,
+			},
+		},
+	})
 
 	table := TableTest{{
 		Name: "bad workqueue key",
@@ -161,6 +189,7 @@ func TestDisabledByDefault(t *testing.T) {
 		Objects: []runtime.Object{
 			NewTrigger(triggerName, testNS, brokerName),
 		},
+		Ctx:                     configuredCtx,
 		Key:                     testNS + "/" + triggerName,
 		SkipNamespaceValidation: true,
 		WantErr:                 false,
@@ -171,6 +200,7 @@ func TestDisabledByDefault(t *testing.T) {
 			NewTrigger(triggerName, testNS, brokerName,
 				WithAnnotation(sugar.InjectionLabelKey, sugar.InjectionDisabledLabelValue)),
 		},
+		Ctx: configuredCtx,
 		Key: testNS + "/" + triggerName,
 	}, {
 		Name: "Trigger is deleted no resources",
@@ -179,6 +209,7 @@ func TestDisabledByDefault(t *testing.T) {
 				WithAnnotation(sugar.InjectionLabelKey, sugar.InjectionEnabledLabelValue),
 				WithTriggerDeleted),
 		},
+		Ctx: configuredCtx,
 		Key: testNS + "/" + triggerName,
 	}, {
 		Name: "Trigger enabled",
@@ -186,6 +217,7 @@ func TestDisabledByDefault(t *testing.T) {
 			NewTrigger(triggerName, testNS, brokerName,
 				WithAnnotation(sugar.InjectionLabelKey, sugar.InjectionEnabledLabelValue)),
 		},
+		Ctx:                     configuredCtx,
 		Key:                     testNS + "/" + triggerName,
 		SkipNamespaceValidation: true,
 		WantErr:                 false,
@@ -202,6 +234,7 @@ func TestDisabledByDefault(t *testing.T) {
 				WithAnnotation(sugar.InjectionLabelKey, sugar.InjectionEnabledLabelValue)),
 			resources.MakeBroker(testNS, resources.DefaultBrokerName),
 		},
+		Ctx:                     configuredCtx,
 		Key:                     testNS + "/" + triggerName,
 		SkipNamespaceValidation: true,
 		WantErr:                 false,
@@ -217,6 +250,7 @@ func TestDisabledByDefault(t *testing.T) {
 				},
 			},
 		},
+		Ctx:                     configuredCtx,
 		Key:                     testNS + "/" + triggerName,
 		SkipNamespaceValidation: true,
 		WantErr:                 false,
